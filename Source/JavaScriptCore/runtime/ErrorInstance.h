@@ -51,6 +51,9 @@ public:
     typedef String (*SourceAppender) (const String& originalMessage, StringView sourceText, RuntimeType, SourceTextWhereErrorOccurred);
 
     DECLARE_EXPORT_INFO;
+    DECLARE_VISIT_CHILDREN;
+
+    static size_t estimatedSize(JSCell*, VM&);
 
     inline static Structure* createStructure(VM&, JSGlobalObject*, JSValue);
 

@@ -115,6 +115,39 @@ void ErrorInstance::setStackFrames(VM& vm, WTF::Vector<StackFrame>&& stackFrames
     Locker locker { cellLock() };
     m_stackTrace = WTFMove(stackTrace);
     vm.writeBarrier(this);
+
+    if (m_stackTrace)
+        vm.heap.reportExtraMemoryAllocated(this, m_stackTrace->sizeInBytes());
+}
+
+template<typename Visitor>
+void ErrorInstance::visitChildrenImpl(JSCell* cell, Visitor& visitor)
+{
+    Base::visitChildren(cell, visitor);
+    auto errorInstance = jsCast<ErrorInstance*>(cell);
+    Locker locker { errorInstance->cellLock() };
+    if (!errorInstance->m_stackString.isEmpty())
+        visitor.reportExtraMemoryVisited(errorInstance->m_stackString.impl()->costDuringGC());
+    if (errorInstance->m_stackTrace)
+        visitor.reportExtraMemoryVisited(errorInstance->m_stackTrace->sizeInBytes());
+}
+
+DEFINE_VISIT_CHILDREN(ErrorInstance);
+
+size_t ErrorInstance::estimatedSize(JSCell* cell, VM& vm)
+{
+    size_t size = sizeof(ErrorInstance);
+    ErrorInstance* errorInstance = jsCast<ErrorInstance*>(cell);
+
+    {
+        Locker locker { errorInstance->cellLock() };
+        if (errorInstance->m_stackTrace)
+            size += errorInstance->m_stackTrace->sizeInBytes();
+        if (!errorInstance->m_stackString.isEmpty())
+            size += errorInstance->m_stackString.impl()->costDuringGC();
+    }
+
+    return Base::estimatedSize(cell, vm) + size;
 }
 
 void ErrorInstance::captureStackTrace(VM& vm, JSGlobalObject* globalObject, size_t framesToSkip, bool append)
@@ -129,6 +162,8 @@ void ErrorInstance::captureStackTrace(VM& vm, JSGlobalObject* globalObject, size
         if (!m_stackTrace || !append) {
             m_stackTrace = WTFMove(stackTrace);
             vm.writeBarrier(this);
+            if (m_stackTrace)
+                vm.heap.reportExtraMemoryAllocated(this, m_stackTrace->sizeInBytes());
             return;
         }
 
@@ -142,6 +177,8 @@ void ErrorInstance::captureStackTrace(VM& vm, JSGlobalObject* globalObject, size
         }
 
         m_stackTrace = WTFMove(stackTrace);
+        if (m_stackTrace)
+            vm.heap.reportExtraMemoryAllocated(this, m_stackTrace->sizeInBytes());
     }
     vm.writeBarrier(this);
 }
@@ -158,6 +195,8 @@ void ErrorInstance::finishCreation(VM& vm, const String& message, JSValue cause,
     {
         Locker locker { cellLock() };
         m_stackTrace = WTFMove(stackTrace);
+        if (m_stackTrace)
+            vm.heap.reportExtraMemoryAllocated(this, m_stackTrace->sizeInBytes());
     }
     vm.writeBarrier(this);
 
@@ -191,6 +230,8 @@ void ErrorInstance::finishCreation(VM& vm, const String& message, JSValue cause,
     {
         Locker locker { cellLock() };
         m_stackTrace = WTFMove(stackTrace);
+        if (m_stackTrace)
+            vm.heap.reportExtraMemoryAllocated(this, m_stackTrace->sizeInBytes());
     }
     vm.writeBarrier(this);
     if (!message.isNull())
@@ -207,7 +248,14 @@ void ErrorInstance::finishCreation(VM& vm, String&& message, LineColumn lineColu
 
     m_lineColumn = lineColumn;
     m_sourceURL = WTFMove(sourceURL);
-    m_stackString = WTFMove(stackString);
+    
+    {
+        Locker locker { cellLock() };
+        m_stackString = WTFMove(stackString);
+        if (!m_stackString.isEmpty())
+            vm.heap.reportExtraMemoryAllocated(this, m_stackString.impl()->costDuringGC());
+    }
+
     if (!message.isNull())
         putDirect(vm, vm.propertyNames->message, jsString(vm, WTFMove(message)), static_cast<unsigned>(PropertyAttribute::DontEnum));
 }
@@ -321,13 +369,21 @@ void ErrorInstance::computeErrorInfo(VM& vm, bool allocationAllowed)
 
     if (m_stackTrace && !m_stackTrace->isEmpty()) {
         auto& fn = vm.onComputeErrorInfo();
+        WTF::String stackString;
         if (fn) {
-            m_stackString = fn(vm, *m_stackTrace.get(), m_lineColumn.line, m_lineColumn.column, m_sourceURL);
+            stackString = fn(vm, *m_stackTrace.get(), m_lineColumn.line, m_lineColumn.column, m_sourceURL);
         } else {
             getLineColumnAndSource(vm, m_stackTrace.get(), m_lineColumn, m_sourceURL);
-            m_stackString = Interpreter::stackTraceAsString(vm, *m_stackTrace.get());
+            stackString = Interpreter::stackTraceAsString(vm, *m_stackTrace.get());
         }
-        m_stackTrace = nullptr;
+
+        {
+            Locker locker { cellLock() };
+            m_stackTrace = nullptr;
+            m_stackString = WTFMove(stackString);
+            if (!m_stackString.isEmpty())
+                vm.heap.reportExtraMemoryAllocated(this, m_stackString.impl()->costDuringGC());
+        }
     }
 }
 
@@ -349,6 +405,7 @@ bool ErrorInstance::materializeErrorInfoIfNeeded(VM& vm)
             Locker locker { cellLock() };
             m_stackTrace->clear();
             m_stackTrace = nullptr;
+            m_stackString = String();
         }
 
         auto attributes = static_cast<unsigned>(PropertyAttribute::DontEnum);
@@ -373,8 +430,12 @@ bool ErrorInstance::materializeErrorInfoIfNeeded(VM& vm)
         putDirect(vm, vm.propertyNames->column, jsNumber(m_lineColumn.column), attributes);
         if (!m_sourceURL.isEmpty())
             putDirect(vm, vm.propertyNames->sourceURL, jsString(vm, WTFMove(m_sourceURL)), attributes);
-
-        putDirect(vm, vm.propertyNames->stack, jsString(vm, WTFMove(m_stackString)), attributes);
+        WTF::String stackString;
+        {
+            Locker locker { cellLock() };
+            stackString = WTFMove(m_stackString);
+        }
+        putDirect(vm, vm.propertyNames->stack, jsString(vm, WTFMove(stackString)), attributes);
         m_errorInfoMaterialized = true;
     }
 
