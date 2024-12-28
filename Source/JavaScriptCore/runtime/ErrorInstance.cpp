@@ -115,24 +115,7 @@ void ErrorInstance::setStackFrames(VM& vm, WTF::Vector<StackFrame>&& stackFrames
     Locker locker { cellLock() };
     m_stackTrace = WTFMove(stackTrace);
     vm.writeBarrier(this);
-
-    if (m_stackTrace)
-        vm.heap.reportExtraMemoryAllocated(this, m_stackTrace->sizeInBytes());
 }
-
-template<typename Visitor>
-void ErrorInstance::visitChildrenImpl(JSCell* cell, Visitor& visitor)
-{
-    Base::visitChildren(cell, visitor);
-    auto errorInstance = jsCast<ErrorInstance*>(cell);
-    Locker locker { errorInstance->cellLock() };
-    if (!errorInstance->m_stackString.isEmpty())
-        visitor.reportExtraMemoryVisited(errorInstance->m_stackString.impl()->costDuringGC());
-    if (errorInstance->m_stackTrace)
-        visitor.reportExtraMemoryVisited(errorInstance->m_stackTrace->sizeInBytes());
-}
-
-DEFINE_VISIT_CHILDREN(ErrorInstance);
 
 size_t ErrorInstance::estimatedSize(JSCell* cell, VM& vm)
 {
@@ -176,8 +159,6 @@ void ErrorInstance::captureStackTrace(VM& vm, JSGlobalObject* globalObject, size
 
         m_stackTrace = WTFMove(stackTrace);
     }
-    if (m_stackTrace)
-        vm.heap.reportExtraMemoryAllocated(this, m_stackTrace->sizeInBytes());
     vm.writeBarrier(this);
 }
 
@@ -194,8 +175,6 @@ void ErrorInstance::finishCreation(VM& vm, const String& message, JSValue cause,
         Locker locker { cellLock() };
         m_stackTrace = WTFMove(stackTrace);
     }
-    if (m_stackTrace)
-        vm.heap.reportExtraMemoryAllocated(this, m_stackTrace->sizeInBytes());
     vm.writeBarrier(this);
 
     String messageWithSource = message;
@@ -229,8 +208,6 @@ void ErrorInstance::finishCreation(VM& vm, const String& message, JSValue cause,
         Locker locker { cellLock() };
         m_stackTrace = WTFMove(stackTrace);
     }
-    if (m_stackTrace)
-        vm.heap.reportExtraMemoryAllocated(this, m_stackTrace->sizeInBytes());
     vm.writeBarrier(this);
     if (!message.isNull())
         putDirect(vm, vm.propertyNames->message, jsString(vm, message), static_cast<unsigned>(PropertyAttribute::DontEnum));
@@ -251,9 +228,6 @@ void ErrorInstance::finishCreation(VM& vm, String&& message, LineColumn lineColu
         Locker locker { cellLock() };
         m_stackString = WTFMove(stackString);
     }
-
-    if (!m_stackString.isEmpty())
-        vm.heap.reportExtraMemoryAllocated(this, m_stackString.impl()->costDuringGC());
 
     if (!message.isNull())
         putDirect(vm, vm.propertyNames->message, jsString(vm, WTFMove(message)), static_cast<unsigned>(PropertyAttribute::DontEnum));
@@ -382,8 +356,6 @@ void ErrorInstance::computeErrorInfo(VM& vm, bool allocationAllowed)
             m_stackString = WTFMove(stackString);
         }
 
-         if (!m_stackString.isEmpty())
-            vm.heap.reportExtraMemoryAllocated(this, m_stackString.impl()->costDuringGC());
     }
 }
 
