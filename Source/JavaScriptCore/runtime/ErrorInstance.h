@@ -52,6 +52,8 @@ public:
 
     DECLARE_EXPORT_INFO;
 
+    static size_t estimatedSize(JSCell*, VM&);
+
     inline static Structure* createStructure(VM&, JSGlobalObject*, JSValue);
 
     static ErrorInstance* create(VM& vm, Structure* structure, const String& message, JSValue cause, SourceAppender appender = nullptr, RuntimeType type = TypeNothing, ErrorType errorType = ErrorType::Error, bool useCurrentFrame = true)

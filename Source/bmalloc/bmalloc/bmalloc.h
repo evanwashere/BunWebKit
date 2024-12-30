@@ -210,7 +210,7 @@ inline size_t availableMemory()
     return bmalloc::availableMemory();
 }
     
-#if BPLATFORM(IOS_FAMILY) || BOS(LINUX) || BOS(FREEBSD)
+#if BPLATFORM(IOS_FAMILY) || BOS(LINUX) || BOS(FREEBSD) || (BOS(DARWIN) && defined(BUILDING_WITH_CMAKE) && BUILDING_WITH_CMAKE)
 inline size_t memoryFootprint()
 {
     return bmalloc::memoryFootprint();

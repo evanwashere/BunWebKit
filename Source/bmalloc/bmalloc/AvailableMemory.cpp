@@ -199,10 +199,10 @@ size_t availableMemory()
     return availableMemory;
 }
 
-#if BPLATFORM(IOS_FAMILY) || BOS(LINUX) || BOS(FREEBSD)
+#if BPLATFORM(IOS_FAMILY) || BOS(LINUX) || BOS(FREEBSD) || (BOS(DARWIN) && defined(BUILDING_WITH_CMAKE) && BUILDING_WITH_CMAKE)
 MemoryStatus memoryStatus()
 {
-#if BPLATFORM(IOS_FAMILY)
+#if BPLATFORM(IOS_FAMILY) || (BOS(DARWIN) && defined(BUILDING_WITH_CMAKE) && BUILDING_WITH_CMAKE)
     task_vm_info_data_t vmInfo;
     mach_msg_type_number_t vmSize = TASK_VM_INFO_COUNT;
     

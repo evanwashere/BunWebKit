@@ -62,6 +62,7 @@ public:
 
     JSValue value() const { return m_value.get(); }
     const Vector<StackFrame>& stack() const { return m_stack; }
+    static size_t estimatedSize(JSCell*, VM&);
 
     bool didNotifyInspectorOfThrow() const { return m_didNotifyInspectorOfThrow; }
     void setDidNotifyInspectorOfThrow() { m_didNotifyInspectorOfThrow = true; }
