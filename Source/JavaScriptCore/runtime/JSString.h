@@ -743,10 +743,12 @@ private:
     friend JSString* jsSubstringOfResolved(VM&, GCDeferralContext*, JSString*, unsigned, unsigned);
     friend JSString* jsSubstring(VM&, JSGlobalObject*, JSString*, unsigned, unsigned);
 
-
+#if USE(BUN_JSC_ADDITIONS)
     JS_EXPORT_PRIVATE void iterRope(jsstring_iterator*) const;
     NEVER_INLINE void iterRopeSlowCase(jsstring_iterator*) const;
     void iterRopeInternalNoSubstring(jsstring_iterator*) const;
+#endif
+
     friend JSString* jsAtomString(JSGlobalObject*, VM&, JSString*);
     friend JSString* jsAtomString(JSGlobalObject*, VM&, JSString*, JSString*);
     friend JSString* jsAtomString(JSGlobalObject*, VM&, JSString*, JSString*, JSString*);
