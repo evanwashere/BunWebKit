@@ -890,7 +890,7 @@ LayoutUnit RenderFlexibleBox::mainAxisMarginExtentForFlexItem(const RenderBox& f
     LayoutUnit marginStart;
     LayoutUnit marginEnd;
     if (isHorizontalFlow())
-        flexItem.computeInlineDirectionMargins(*this, flexItem.containingBlockLogicalWidthForContentInFragment(nullptr), flexItem.logicalWidth(), { }, marginStart, marginEnd);
+        flexItem.computeInlineDirectionMargins(*this, flexItem.containingBlockLogicalWidthForContent(), flexItem.logicalWidth(), { }, marginStart, marginEnd);
     else
         flexItem.computeBlockDirectionMargins(*this, marginStart, marginEnd);
     return marginStart + marginEnd;
@@ -906,7 +906,7 @@ LayoutUnit RenderFlexibleBox::crossAxisMarginExtentForFlexItem(const RenderBox& 
     if (isHorizontalFlow())
         flexItem.computeBlockDirectionMargins(*this, marginStart, marginEnd);
     else
-        flexItem.computeInlineDirectionMargins(*this, flexItem.containingBlockLogicalWidthForContentInFragment(nullptr), flexItem.logicalWidth(), { }, marginStart, marginEnd);
+        flexItem.computeInlineDirectionMargins(*this, flexItem.containingBlockLogicalWidthForContent(), flexItem.logicalWidth(), { }, marginStart, marginEnd);
     return marginStart + marginEnd;
 }
 
@@ -1687,9 +1687,9 @@ void RenderFlexibleBox::maybeCacheFlexItemMainIntrinsicSize(RenderBox& flexItem,
     // by definition we have an indefinite flex basis here and thus percentages should not resolve.
     if (flexItem.needsLayout() || !m_intrinsicSizeAlongMainAxis.contains(flexItem)) {
         if (isHorizontalWritingMode() == flexItem.isHorizontalWritingMode())
-            flexItem.setOverridingContainingBlockContentLogicalHeight(std::nullopt);
+            flexItem.setOverridingContainingBlockContentLogicalHeight({ });
         else
-            flexItem.setOverridingContainingBlockContentLogicalWidth(std::nullopt);
+            flexItem.setOverridingContainingBlockContentLogicalWidth({ });
         flexItem.setChildNeedsLayout(MarkOnlyThis);
         flexItem.layoutIfNeeded();
         cacheFlexItemMainSize(flexItem);

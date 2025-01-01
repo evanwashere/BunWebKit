@@ -1862,27 +1862,21 @@ LayoutUnit RenderBlock::textIndentOffset() const
     return minimumValueForLength(style().textIndent(), cw);
 }
 
-LayoutUnit RenderBlock::logicalLeftOffsetForContent(RenderFragmentContainer* fragment) const
+LayoutUnit RenderBlock::logicalLeftOffsetForContent() const
 {
     LayoutUnit logicalLeftOffset = writingMode().isHorizontal() ? borderLeft() + paddingLeft() : borderTop() + paddingTop();
     if (shouldPlaceVerticalScrollbarOnLeft() && isHorizontalWritingMode())
         logicalLeftOffset += verticalScrollbarWidth();
-    if (!fragment)
-        return logicalLeftOffset;
-    LayoutRect boxRect = borderBoxRectInFragment(fragment);
-    return logicalLeftOffset + (isHorizontalWritingMode() ? boxRect.x() : boxRect.y());
+    return logicalLeftOffset;
 }
 
-LayoutUnit RenderBlock::logicalRightOffsetForContent(RenderFragmentContainer* fragment) const
+LayoutUnit RenderBlock::logicalRightOffsetForContent() const
 {
     LayoutUnit logicalRightOffset = writingMode().isHorizontal() ? borderLeft() + paddingLeft() : borderTop() + paddingTop();
     if (shouldPlaceVerticalScrollbarOnLeft() && isHorizontalWritingMode())
         logicalRightOffset += verticalScrollbarWidth();
     logicalRightOffset += availableLogicalWidth();
-    if (!fragment)
-        return logicalRightOffset;
-    LayoutRect boxRect = borderBoxRectInFragment(fragment);
-    return logicalRightOffset - (logicalWidth() - (isHorizontalWritingMode() ? boxRect.maxX() : boxRect.maxY()));
+    return logicalRightOffset;
 }
 
 LayoutUnit RenderBlock::adjustLogicalLeftOffsetForLine(LayoutUnit offsetFromFloats) const
@@ -2037,7 +2031,7 @@ bool RenderBlock::nodeAtPoint(const HitTestRequest& request, HitTestResult& resu
 
     // If we have clipping, then we can't have any spillout.
     bool useClip = (hasControlClip() || hasNonVisibleOverflow());
-    bool checkChildren = !useClip || (hasControlClip() ? locationInContainer.intersects(controlClipRect(adjustedLocation)) : locationInContainer.intersects(overflowClipRect(adjustedLocation, nullptr, OverlayScrollbarSizeRelevancy::IncludeOverlayScrollbarSize)));
+    bool checkChildren = !useClip || (hasControlClip() ? locationInContainer.intersects(controlClipRect(adjustedLocation)) : locationInContainer.intersects(overflowClipRect(adjustedLocation, OverlayScrollbarSizeRelevancy::IncludeOverlayScrollbarSize)));
     if (checkChildren && hitTestChildren(request, result, locationInContainer, adjustedLocation, hitTestAction))
         return true;
 
@@ -2121,7 +2115,7 @@ VisiblePosition positionForPointRespectingEditingBoundaries(RenderBlock& parent,
     return ancestor->createVisiblePosition(childElement->computeNodeIndex() + 1, Affinity::Upstream);
 }
 
-VisiblePosition RenderBlock::positionForPointWithInlineChildren(const LayoutPoint&, HitTestSource, const RenderFragmentContainer*)
+VisiblePosition RenderBlock::positionForPointWithInlineChildren(const LayoutPoint&, HitTestSource)
 {
     ASSERT_NOT_REACHED();
     return VisiblePosition();
@@ -2177,7 +2171,7 @@ VisiblePosition RenderBlock::positionForPoint(const LayoutPoint& point, HitTestS
         pointInLogicalContents = pointInLogicalContents.transposedPoint();
 
     if (childrenInline())
-        return positionForPointWithInlineChildren(pointInLogicalContents, source, fragment);
+        return positionForPointWithInlineChildren(pointInLogicalContents, source);
 
     RenderBox* lastCandidateBox = lastChildBox();
 

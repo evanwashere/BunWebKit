@@ -1154,16 +1154,16 @@ void RenderBlockFlow::adjustFloatingBlock(const MarginInfo& marginInfo)
 void RenderBlockFlow::updateStaticInlinePositionForChild(RenderBox& child, LayoutUnit logicalTop)
 {
     if (child.style().isOriginalDisplayInlineType())
-        setStaticInlinePositionForChild(child, logicalTop, staticInlinePositionForOriginalDisplayInline(logicalTop));
+        setStaticInlinePositionForChild(child, staticInlinePositionForOriginalDisplayInline(logicalTop));
     else
-        setStaticInlinePositionForChild(child, logicalTop, startOffsetForContent(logicalTop));
+        setStaticInlinePositionForChild(child, startOffsetForContent());
 }
 
-void RenderBlockFlow::setStaticInlinePositionForChild(RenderBox& child, LayoutUnit blockOffset, LayoutUnit inlinePosition)
+void RenderBlockFlow::setStaticInlinePositionForChild(RenderBox& child, LayoutUnit inlinePosition)
 {
     if (enclosingFragmentedFlow()) {
         // Shift the inline position to exclude the fragment offset.
-        inlinePosition += startOffsetForContent() - startOffsetForContent(blockOffset);
+        inlinePosition += startOffsetForContent() - startOffsetForContent();
     }
     child.layer()->setStaticInlinePosition(inlinePosition);
 }
@@ -2587,8 +2587,8 @@ LayoutUnit RenderBlockFlow::logicalRightOffsetForPositioningFloat(LayoutUnit log
 void RenderBlockFlow::computeLogicalLocationForFloat(FloatingObject& floatingObject, LayoutUnit& logicalTopOffset)
 {
     auto& childBox = floatingObject.renderer();
-    LayoutUnit logicalLeftOffset = logicalLeftOffsetForContent(logicalTopOffset); // Constant part of left offset.
-    LayoutUnit logicalRightOffset = logicalRightOffsetForContent(logicalTopOffset); // Constant part of right offset.
+    LayoutUnit logicalLeftOffset = logicalLeftOffsetForContent(); // Constant part of left offset.
+    LayoutUnit logicalRightOffset = logicalRightOffsetForContent(); // Constant part of right offset.
 
     LayoutUnit floatLogicalWidth = std::min(logicalWidthForFloat(floatingObject), logicalRightOffset - logicalLeftOffset); // The width we look for.
 
@@ -2616,8 +2616,8 @@ void RenderBlockFlow::computeLogicalLocationForFloat(FloatingObject& floatingObj
             floatLogicalLeft = logicalLeftOffsetForPositioningFloat(logicalTopOffset, logicalLeftOffset, &heightRemainingLeft);
             if (insideFragmentedFlow) {
                 // Have to re-evaluate all of our offsets, since they may have changed.
-                logicalRightOffset = logicalRightOffsetForContent(logicalTopOffset); // Constant part of right offset.
-                logicalLeftOffset = logicalLeftOffsetForContent(logicalTopOffset); // Constant part of left offset.
+                logicalRightOffset = logicalRightOffsetForContent(); // Constant part of right offset.
+                logicalLeftOffset = logicalLeftOffsetForContent(); // Constant part of left offset.
                 floatLogicalWidth = std::min(logicalWidthForFloat(floatingObject), logicalRightOffset - logicalLeftOffset);
             }
         }
@@ -2631,8 +2631,8 @@ void RenderBlockFlow::computeLogicalLocationForFloat(FloatingObject& floatingObj
             floatLogicalLeft = logicalRightOffsetForPositioningFloat(logicalTopOffset, logicalRightOffset, &heightRemainingRight);
             if (insideFragmentedFlow) {
                 // Have to re-evaluate all of our offsets, since they may have changed.
-                logicalRightOffset = logicalRightOffsetForContent(logicalTopOffset); // Constant part of right offset.
-                logicalLeftOffset = logicalLeftOffsetForContent(logicalTopOffset); // Constant part of left offset.
+                logicalRightOffset = logicalRightOffsetForContent(); // Constant part of right offset.
+                logicalLeftOffset = logicalLeftOffsetForContent(); // Constant part of left offset.
                 floatLogicalWidth = std::min(logicalWidthForFloat(floatingObject), logicalRightOffset - logicalLeftOffset);
             }
         }
@@ -3081,11 +3081,10 @@ LayoutUnit RenderBlockFlow::getClearDelta(RenderBox& child, LayoutUnit logicalTo
         LayoutUnit newLogicalTop = logicalTop;
         while (true) {
             LayoutUnit availableLogicalWidthAtNewLogicalTopOffset = availableLogicalWidthForLine(newLogicalTop, logicalHeightForChild(child));
-            if (availableLogicalWidthAtNewLogicalTopOffset == availableLogicalWidthForContent(newLogicalTop))
+            if (availableLogicalWidthAtNewLogicalTopOffset == availableLogicalWidthForContent())
                 return newLogicalTop - logicalTop;
 
-            RenderFragmentContainer* fragment = fragmentAtBlockOffset(logicalTopForChild(child));
-            LayoutRect borderBox = child.borderBoxRectInFragment(fragment, RenderBoxFragmentInfoFlags::DoNotCacheRenderBoxFragmentInfo);
+            LayoutRect borderBox = child.borderBoxRect();
             LayoutUnit childLogicalWidthAtOldLogicalTopOffset = isHorizontalWritingMode() ? borderBox.width() : borderBox.height();
 
             // FIXME: None of this is right for perpendicular writing-mode children.
@@ -3096,8 +3095,7 @@ LayoutUnit RenderBlockFlow::getClearDelta(RenderBox& child, LayoutUnit logicalTo
 
             child.setLogicalTop(newLogicalTop);
             child.updateLogicalWidth();
-            fragment = fragmentAtBlockOffset(logicalTopForChild(child));
-            borderBox = child.borderBoxRectInFragment(fragment, RenderBoxFragmentInfoFlags::DoNotCacheRenderBoxFragmentInfo);
+            borderBox = child.borderBoxRect();
             LayoutUnit childLogicalWidthAtNewLogicalTopOffset = isHorizontalWritingMode() ? borderBox.width() : borderBox.height();
 
             child.setLogicalTop(childOldLogicalTop);
@@ -3579,7 +3577,7 @@ RenderText* RenderBlockFlow::findClosestTextAtAbsolutePoint(const FloatPoint& po
     return nullptr;
 }
 
-VisiblePosition RenderBlockFlow::positionForPointWithInlineChildren(const LayoutPoint& pointInLogicalContents, HitTestSource source, const RenderFragmentContainer* fragment)
+VisiblePosition RenderBlockFlow::positionForPointWithInlineChildren(const LayoutPoint& pointInLogicalContents, HitTestSource source)
 {
     ASSERT(childrenInline());
 
@@ -3596,9 +3594,6 @@ VisiblePosition RenderBlockFlow::positionForPointWithInlineChildren(const Layout
     InlineIterator::LineBoxIterator firstLineBoxWithChildren;
     InlineIterator::LineBoxIterator lastLineBoxWithChildren;
     for (auto lineBox = firstLineBox; lineBox; lineBox.traverseNext()) {
-        if (fragment && lineBox->containingFragment() != fragment)
-            continue;
-
         if (!lineBox->firstLeafBox())
             continue;
         if (!firstLineBoxWithChildren)
