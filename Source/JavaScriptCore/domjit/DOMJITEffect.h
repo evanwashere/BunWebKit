@@ -28,6 +28,8 @@
 #include "DFGAbstractHeap.h"
 #include "DOMJITHeapRange.h"
 
+WTF_ALLOW_UNSAFE_BUFFER_USAGE_BEGIN
+
 namespace JSC {
 namespace DOMJIT {
 
@@ -100,3 +102,5 @@ struct Effect {
 
 }
 }
+
+WTF_ALLOW_UNSAFE_BUFFER_USAGE_END

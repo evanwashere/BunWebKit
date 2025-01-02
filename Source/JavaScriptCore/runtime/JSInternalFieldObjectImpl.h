@@ -31,6 +31,10 @@ WTF_ALLOW_UNSAFE_BUFFER_USAGE_BEGIN
 
 namespace JSC {
 
+#if USE(BUN_JSC_ADDITIONS)
+class HeapAnalyzer;
+#endif
+
 // This is used for sharing interface and implementation. It should not have its own classInfo.
 template<unsigned passedNumberOfInternalFields = 1>
 class JSInternalFieldObjectImpl : public JSNonFinalObject {
@@ -63,6 +67,10 @@ public:
         ASSERT(index < numberOfInternalFields);
         return m_internalFields[index];
     }
+
+#if USE(BUN_JSC_ADDITIONS)
+    JS_EXPORT_PRIVATE static void analyzeHeap(JSCell*, HeapAnalyzer&);
+#endif
 
     static constexpr ptrdiff_t offsetOfInternalFields() { return OBJECT_OFFSETOF(JSInternalFieldObjectImpl, m_internalFields); }
     static constexpr ptrdiff_t offsetOfInternalField(unsigned index) { return OBJECT_OFFSETOF(JSInternalFieldObjectImpl, m_internalFields) + index * sizeof(WriteBarrier<Unknown>); }
