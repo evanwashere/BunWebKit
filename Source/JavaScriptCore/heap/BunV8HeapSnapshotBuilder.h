@@ -131,7 +131,7 @@ private:
     unsigned getEdgeTypeIndex(const String& type);
     unsigned addString(const String&);
     void initializeTypeNames();
-    String getDetailedNodeType(JSCell*);
+    String getDetailedNodeType(JSCell*, bool recurse = true);
     std::optional<TraceLocation> getTraceLocation(JSCell*);
 };
 
