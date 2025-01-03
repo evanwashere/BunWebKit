@@ -145,7 +145,6 @@ void BunV8HeapSnapshotBuilder::analyzeNode(JSCell* cell)
     }
 }
 
-
 unsigned BunV8HeapSnapshotBuilder::analyzeNodeInternal(JSCell* cell, void* optionalHashId)
 {
 
@@ -230,7 +229,6 @@ void BunV8HeapSnapshotBuilder::analyzeVariableNameEdge(JSCell* from, JSCell* to,
     edge.typeIndex = static_cast<unsigned>(V8EdgeType::Context);
     edge.name = String(variableName);
 
-   
     m_edges.append(WTFMove(edge));
 }
 
@@ -250,9 +248,10 @@ void BunV8HeapSnapshotBuilder::analyzeIndexEdge(JSCell* from, JSCell* to, uint32
 }
 
 void BunV8HeapSnapshotBuilder::setOpaqueRootReachabilityReasonForCell(JSCell*, ASCIILiteral) {}
-void BunV8HeapSnapshotBuilder::setWrappedObjectForCell(JSCell* cell, void* wrappedObject) {
+void BunV8HeapSnapshotBuilder::setWrappedObjectForCell(JSCell* cell, void* wrappedObject)
+{
     unsigned id = getOrCreateNodeId(cell, wrappedObject);
-    
+
     // TODO: make this one lock instead of two.
     Locker locker { m_buildingNodeMutex };
     m_nodes[id].id = generateHashID(cell, wrappedObject);
@@ -276,7 +275,6 @@ unsigned BunV8HeapSnapshotBuilder::getOrCreateNodeId(JSCell* cell, void* optiona
     auto it = m_cellToNodeId.find(cell);
     if (it != m_cellToNodeId.end())
         return it->value;
-
 
     unsigned id = analyzeNodeInternal(cell, optionalHashId);
     m_cellToNodeId.set(cell, id);
@@ -430,7 +428,7 @@ String BunV8HeapSnapshotBuilder::getDetailedNodeType(JSCell* cell)
     if (object) {
         // For arrays, include the length
         if (JSArray* array = jsDynamicCast<JSArray*>(cell)) {
-            return "Array"_s;
+            return makeString("Array ("_s, array->length(), ")"_s);
         }
 
         // For functions, try to get the display name
@@ -565,20 +563,19 @@ String BunV8HeapSnapshotBuilder::generateV8HeapSnapshot()
             // First sort by fromNodeId
             if (a.fromNodeId != b.fromNodeId)
                 return a.fromNodeId < b.fromNodeId;
-            
+
             // Then by typeIndex
             if (a.typeIndex != b.typeIndex)
                 return a.typeIndex < b.typeIndex;
-            
+
             // Then by toNodeId
             if (a.toNodeId != b.toNodeId)
                 return a.toNodeId < b.toNodeId;
 
             // For element/hidden edges, compare by index
-            if (a.typeIndex == static_cast<unsigned>(V8EdgeType::Element) || 
-                a.typeIndex == static_cast<unsigned>(V8EdgeType::Hidden))
+            if (a.typeIndex == static_cast<unsigned>(V8EdgeType::Element) || a.typeIndex == static_cast<unsigned>(V8EdgeType::Hidden))
                 return a.index < b.index;
-            
+
             // For named edges, compare by name
             return WTF::codePointCompareLessThan(a.name, b.name);
         });
@@ -593,13 +590,10 @@ String BunV8HeapSnapshotBuilder::generateV8HeapSnapshot()
             const auto& curr = m_edges[readIndex];
 
             // Check if this is a duplicate edge
-            bool isDuplicate = prev.fromNodeId == curr.fromNodeId && 
-                             prev.toNodeId == curr.toNodeId && 
-                             prev.typeIndex == curr.typeIndex;
+            bool isDuplicate = prev.fromNodeId == curr.fromNodeId && prev.toNodeId == curr.toNodeId && prev.typeIndex == curr.typeIndex;
 
             if (isDuplicate) {
-                if (prev.typeIndex == static_cast<unsigned>(V8EdgeType::Element) || 
-                    prev.typeIndex == static_cast<unsigned>(V8EdgeType::Hidden)) {
+                if (prev.typeIndex == static_cast<unsigned>(V8EdgeType::Element) || prev.typeIndex == static_cast<unsigned>(V8EdgeType::Hidden)) {
                     isDuplicate = prev.index == curr.index;
                 } else {
                     isDuplicate = prev.name == curr.name;
@@ -702,7 +696,7 @@ String BunV8HeapSnapshotBuilder::generateV8HeapSnapshot()
     json.append("\"edges\":["_s);
     for (unsigned i = 0; i < m_edges.size(); ++i) {
         const auto& edge = m_edges[i];
-        
+
         // Validate node IDs
         ASSERT(edge.fromNodeId < m_nodes.size());
         ASSERT(edge.toNodeId < m_nodes.size());
