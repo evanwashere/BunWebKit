@@ -27,12 +27,30 @@ function of(/* items... */)
 {
     "use strict";
 
-    var length = @argumentCount();
-    var array = this !== @Array && @isConstructor(this) ? new this(length) : @newArrayWithSize(length);
-    for (var k = 0; k < length; ++k)
-        @putByValDirect(array, k, arguments[k]);
-    array.length = length;
-    return array;
+    // !bun patch
+    const len = @argumentCount();
+    const extended = this !== @Array && @isConstructor(this);
+    const arr = extended ? new this(len) : @newArrayWithSize(len);
+
+    const unrollable = len <= 2 ** 30;
+
+    if (!unrollable) for (let o = 0; o < len; o++) @putByValDirect(arr, o, arguments[o]);
+
+    else {
+        const unrolled = len & ~3;
+
+        for (let o = 0; o < unrolled; o += 4) {
+            @putByValDirect(arr, o, arguments[o]);
+            @putByValDirect(arr, o + 1, arguments[o + 1]);
+            @putByValDirect(arr, o + 2, arguments[o + 2]);
+            @putByValDirect(arr, o + 3, arguments[o + 3]);
+        }
+
+        for (let o = unrolled; o < len; o++) @putByValDirect(arr, o, arguments[o]);
+    }
+
+    return (arr.length = len, arr);
+    // @bun patch
 }
 
 function from(items /*, mapFn, thisArg */)
@@ -58,53 +76,118 @@ function from(items /*, mapFn, thisArg */)
             return fastResult;
     }
 
-    var iteratorMethod = items.@@iterator;
+    // !bun patch
+    const iteratorMethod = items.@@iterator;
+
     if (!@isUndefinedOrNull(iteratorMethod)) {
         if (!@isCallable(iteratorMethod))
             @throwTypeError("Array.from requires that the property of the first argument, items[Symbol.iterator], when exists, be a function");
 
-        var result = this !== @Array && @isConstructor(this) ? new this() : [];
+        const extended = this !== @Array && @isConstructor(this);
 
-        var k = 0;
-        var iterator = iteratorMethod.@call(items);
+        let offset = 0;
+        const arr = extended ? new this() : [];
+        const iterator = iteratorMethod.@call(items);
 
-        // Since for-of loop once more looks up the @@iterator property of a given iterable,
-        // it could be observable if the user defines a getter for @@iterator.
-        // To avoid this situation, we define a wrapper object that @@iterator just returns a given iterator.
-        var wrapper = {
+        const wrapper = {
             @@iterator: function () { return iterator; }
         };
 
-        for (var value of wrapper) {
-            if (k >= @MAX_SAFE_INTEGER)
-                @throwTypeError("Length exceeded the maximum array length");
-            if (mapFn === @undefined)
-                @putByValDirect(result, k, value);
-            else
-                @putByValDirect(result, k, thisArg === @undefined ? mapFn(value, k) : mapFn.@call(thisArg, value, k));
-            k += 1;
+        if (mapFn === @undefined) {
+            for (const value of wrapper) {
+                if (offset === @MAX_SAFE_INTEGER) @throwTypeError("Length exceeded the maximum array length");
+                @putByValDirect(arr, offset, value);
+
+                offset++;
+            }
         }
 
-        result.length = k;
-        return result;
+        else {
+            if (thisArg === @undefined) {
+                for (const value of wrapper) {
+                    if (offset === @MAX_SAFE_INTEGER) @throwTypeError("Length exceeded the maximum array length");
+                    @putByValDirect(arr, offset, mapFn(value, offset));
+
+                    offset++;
+                }
+            }
+
+            else {
+                for (const value of wrapper) {
+                    if (offset === @MAX_SAFE_INTEGER) @throwTypeError("Length exceeded the maximum array length");
+                    @putByValDirect(arr, offset, mapFn.@call(thisArg, value, offset));
+
+                    offset++;
+                }
+            }
+        }
+
+        return (arr.length = offset, arr);
+    }
+    // @bun patch
+
+    // !bun patch
+    const len = @toLength(arrayLike.length);
+    const extended = this !== @Array && @isConstructor(this);
+    const arr = extended ? new this(len) : @newArrayWithSize(len);
+    
+    const unrollable = len <= 2 ** 30;
+
+    if (mapFn === @undefined) {
+        if (!unrollable) for (let o = 0; o < len; o++) @putByValDirect(arr, o, arrayLike[o]);
+
+        else {
+            const unrolled = len & ~3;
+
+            for (let o = 0; o < unrolled; o += 4) {
+                @putByValDirect(arr, o, arrayLike[o]);
+                @putByValDirect(arr, o + 1, arrayLike[o + 1]);
+                @putByValDirect(arr, o + 2, arrayLike[o + 2]);
+                @putByValDirect(arr, o + 3, arrayLike[o + 3]);
+            }
+
+            for (let o = unrolled; o < len; o++) @putByValDirect(arr, o, arrayLike[o]);
+        }
     }
 
-    var arrayLikeLength = @toLength(arrayLike.length);
+    else {
+        if (thisArg === @undefined) {
+            if (!unrollable) for (let o = 0; o < len; o++) @putByValDirect(arr, o, mapFn(arrayLike[o], o));
 
-    var result = this !== @Array && @isConstructor(this) ? new this(arrayLikeLength) : @newArrayWithSize(arrayLikeLength);
+            else {
+                const unrolled = len & ~3;
 
-    var k = 0;
-    while (k < arrayLikeLength) {
-        var value = arrayLike[k];
-        if (mapFn === @undefined)
-            @putByValDirect(result, k, value);
-        else
-            @putByValDirect(result, k, thisArg === @undefined ? mapFn(value, k) : mapFn.@call(thisArg, value, k));
-        k += 1;
+                for (let o = 0; o < unrolled; o += 4) {
+                    @putByValDirect(arr, o, mapFn(arrayLike[o], o));
+                    @putByValDirect(arr, o + 1, mapFn(arrayLike[o + 1], o + 1));
+                    @putByValDirect(arr, o + 2, mapFn(arrayLike[o + 2], o + 2));
+                    @putByValDirect(arr, o + 3, mapFn(arrayLike[o + 3], o + 3));
+                }
+
+                for (let o = unrolled; o < len; o++) @putByValDirect(arr, o, mapFn(arrayLike[o], o));
+            }
+        }
+
+        else {
+            if (!unrollable) for (let o = 0; o < len; o++) @putByValDirect(arr, o, mapFn.@call(thisArg, arrayLike[o], o));
+
+            else {
+                const unrolled = len & ~3;
+
+                for (let o = 0; o < unrolled; o += 4) {
+                    @putByValDirect(arr, o, mapFn.@call(thisArg, arrayLike[o], o));
+                    @putByValDirect(arr, o + 1, mapFn.@call(thisArg, arrayLike[o + 1], o + 1));
+                    @putByValDirect(arr, o + 2, mapFn.@call(thisArg, arrayLike[o + 2], o + 2));
+                    @putByValDirect(arr, o + 3, mapFn.@call(thisArg, arrayLike[o + 3], o + 3));
+                }
+
+                for (let o = unrolled; o < len; o++) @putByValDirect(arr, o, mapFn.@call(thisArg, arrayLike[o], o));
+            }
+        }
     }
 
-    result.length = arrayLikeLength;
-    return result;
+    return (arr.length = len, arr);
+    // @bun patch
 }
 
 function isArray(array)
@@ -124,29 +207,46 @@ async function defaultAsyncFromAsyncIterator(iterator, mapFn, thisArg)
 {
     "use strict";
 
-    var result = this !== @Array && @isConstructor(this) ? new this() : [];
+    // !bun patch
+    const extended = this !== @Array && @isConstructor(this);
 
-    var k = 0;
+    let offset = 0;
+    const arr = extended ? new this() : [];
 
-    // Since for-of loop once more looks up the @@iterator property of a given iterable,
-    // it could be observable if the user defines a getter for @@iterator.
-    // To avoid this situation, we define a wrapper object that @@iterator just returns a given iterator.
-    var wrapper = {
+    const wrapper = {
         @@asyncIterator: function () { return iterator; }
     };
 
-    for await (var value of wrapper) {
-        if (k >= @MAX_SAFE_INTEGER)
-            @throwTypeError("Length exceeded the maximum array length");
-        if (mapFn === @undefined)
-            @putByValDirect(result, k, value);
-        else
-            @putByValDirect(result, k, await (thisArg === @undefined ? mapFn(value, k) : mapFn.@call(thisArg, value, k)));
-        k += 1;
+    if (mapFn === @undefined) {
+        for await (const value of wrapper) {
+            if (offset === @MAX_SAFE_INTEGER) @throwTypeError("Length exceeded the maximum array length");
+            @putByValDirect(arr, offset, value);
+
+            offset++;
+        }
     }
 
-    result.length = k;
-    return result;
+    else {
+        if (thisArg === @undefined) {
+            for await (const value of wrapper) {
+                if (offset === @MAX_SAFE_INTEGER) @throwTypeError("Length exceeded the maximum array length");
+                @putByValDirect(arr, offset, await mapFn(value, offset));
+
+                offset++;
+            }
+        }
+
+        else {
+            for await (const value of wrapper) {
+                if (offset === @MAX_SAFE_INTEGER) @throwTypeError("Length exceeded the maximum array length");
+                @putByValDirect(arr, offset, await mapFn.@call(thisArg, value, offset));
+
+                offset++;
+            }
+        }
+    }
+
+    return (arr.length = offset, arr);
 }
 
 @linkTimeConstant
@@ -157,22 +257,68 @@ async function defaultAsyncFromAsyncArrayLike(asyncItems, mapFn, thisArg)
 
     var arrayLike = @toObject(asyncItems, "Array.fromAsync requires an array-like object - not null or undefined");
 
-    var arrayLikeLength = @toLength(arrayLike.length);
+    // !bun patch
+    const len = @toLength(arrayLike.length);
+    const extended = this !== @Array && @isConstructor(this);
+    const arr = extended ? new this(len) : @newArrayWithSize(len);
 
-    var result = this !== @Array && @isConstructor(this) ? new this(arrayLikeLength) : @newArrayWithSize(arrayLikeLength);
+    const unrollable = len <= 2 ** 30;
 
-    var k = 0;
-    while (k < arrayLikeLength) {
-        var value = await arrayLike[k];
-        if (mapFn === @undefined)
-            @putByValDirect(result, k, value);
-        else
-            @putByValDirect(result, k, await (thisArg === @undefined ? mapFn(value, k) : mapFn.@call(thisArg, value, k)));
-        k += 1;
+    if (mapFn === @undefined) {
+        if (!unrollable) for (let o = 0; o < len; o++) @putByValDirect(arr, o, await arrayLike[o]);
+
+        else {
+            const unrolled = len & ~3;
+
+            for (let o = 0; o < unrolled; o += 4) {
+                @putByValDirect(arr, o, await arrayLike[o]);
+                @putByValDirect(arr, o + 1, await arrayLike[o + 1]);
+                @putByValDirect(arr, o + 2, await arrayLike[o + 2]);
+                @putByValDirect(arr, o + 3, await arrayLike[o + 3]);
+            }
+
+            for (let o = unrolled; o < len; o++) @putByValDirect(arr, o, await arrayLike[o]);
+        }
     }
 
-    result.length = arrayLikeLength;
-    return result;
+    else {
+        if (thisArg === @undefined) {
+            if (!unrollable) for (let o = 0; o < len; o++) @putByValDirect(arr, o, await mapFn(await arrayLike[o], o));
+
+            else {
+                const unrolled = len & ~3;
+
+                for (let o = 0; o < unrolled; o += 4) {
+                    @putByValDirect(arr, o, await mapFn(await arrayLike[o], o));
+                    @putByValDirect(arr, o + 1, await mapFn(await arrayLike[o + 1], o + 1));
+                    @putByValDirect(arr, o + 2, await mapFn(await arrayLike[o + 2], o + 2));
+                    @putByValDirect(arr, o + 3, await mapFn(await arrayLike[o + 3], o + 3));
+                }
+
+                for (let o = unrolled; o < len; o++) @putByValDirect(arr, o, await mapFn(await arrayLike[o], o));
+            }
+        }
+
+        else {
+            if (!unrollable) for (let o = 0; o < len; o++) @putByValDirect(arr, o, await mapFn.@call(thisArg, await arrayLike[o], o));
+   
+            else {
+                const unrolled = len & ~3;
+   
+                for (let o = 0; o < unrolled; o += 4) {
+                    @putByValDirect(arr, o, await mapFn.@call(thisArg, await arrayLike[o], o));
+                    @putByValDirect(arr, o + 1, await mapFn.@call(thisArg, await arrayLike[o + 1], o + 1));
+                    @putByValDirect(arr, o + 2, await mapFn.@call(thisArg, await arrayLike[o + 2], o + 2));
+                    @putByValDirect(arr, o + 3, await mapFn.@call(thisArg, await arrayLike[o + 3], o + 3));
+                }
+
+                for (let o = unrolled; o < len; o++) @putByValDirect(arr, o, await mapFn.@call(thisArg, await arrayLike[o], o));
+            }
+        }
+    }
+
+    return (arr.length = len, arr);
+    // @bun patch
 }
 
 function fromAsync(asyncItems  /*, mapFn, thisArg */)
