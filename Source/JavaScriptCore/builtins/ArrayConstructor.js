@@ -130,58 +130,132 @@ function from(items /*, mapFn, thisArg */)
     const len = @toLength(arrayLike.length);
     const extended = this !== @Array && @isConstructor(this);
     const arr = extended ? new this(len) : @newArrayWithSize(len);
-    
+
+    let fast = true;
     const unrollable = len <= 2 ** 30;
 
-    if (mapFn === @undefined) {
-        if (!unrollable) for (let o = 0; o < len; o++) @putByValDirect(arr, o, arrayLike[o]);
+    if (@isArray(arrayLike)) fast = false;
+    else if (@isProxyObject(arrayLike)) fast = false;
+    else if (@isTypedArrayView(arrayLike)) fast = false;
+
+    else {
+        // @isNaturalObject would be useful
+        if (@Object.prototype !== @Object.@getPrototypeOf(arrayLike)) fast = false;
 
         else {
-            const unrolled = len & ~3;
+            // needs @objectAllKeysCount(obj)
+            const keys = @Object.@getOwnPropertyNames(arrayLike);
+            // can hoist === 'length' check with early return on length
+            if (1 !== keys.length || keys[0] !== 'length') fast = false;
+        }
+    }
 
-            for (let o = 0; o < unrolled; o += 4) {
-                @putByValDirect(arr, o, arrayLike[o]);
-                @putByValDirect(arr, o + 1, arrayLike[o + 1]);
-                @putByValDirect(arr, o + 2, arrayLike[o + 2]);
-                @putByValDirect(arr, o + 3, arrayLike[o + 3]);
+    if (mapFn === @undefined) {
+        if (fast) {
+            if (!unrollable) for (let o = 0; o < len; o++) @putByValDirect(arr, o, @undefined);
+
+            else {
+                const unrolled = len & ~3;
+
+                for (let o = 0; o < unrolled; o += 4) {
+                    @putByValDirect(arr, o, @undefined);
+                    @putByValDirect(arr, o + 1, @undefined);
+                    @putByValDirect(arr, o + 2, @undefined);
+                    @putByValDirect(arr, o + 3, @undefined);
+                }
+
+                for (let o = unrolled; o < len; o++) @putByValDirect(arr, o, @undefined);
             }
+        }
 
-            for (let o = unrolled; o < len; o++) @putByValDirect(arr, o, arrayLike[o]);
+        else {
+            if (!unrollable) for (let o = 0; o < len; o++) @putByValDirect(arr, o, arrayLike[o]);
+
+            else {
+                const unrolled = len & ~3;
+    
+                for (let o = 0; o < unrolled; o += 4) {
+                    @putByValDirect(arr, o, arrayLike[o]);
+                    @putByValDirect(arr, o + 1, arrayLike[o + 1]);
+                    @putByValDirect(arr, o + 2, arrayLike[o + 2]);
+                    @putByValDirect(arr, o + 3, arrayLike[o + 3]);
+                }
+    
+                for (let o = unrolled; o < len; o++) @putByValDirect(arr, o, arrayLike[o]);
+            }
         }
     }
 
     else {
         if (thisArg === @undefined) {
-            if (!unrollable) for (let o = 0; o < len; o++) @putByValDirect(arr, o, mapFn(arrayLike[o], o));
+            if (fast) {
+                if (!unrollable) for (let o = 0; o < len; o++) @putByValDirect(arr, o, mapFn(@undefined, o));
+
+                else {
+                    const unrolled = len & ~3;
+
+                    for (let o = 0; o < unrolled; o += 4) {
+                        @putByValDirect(arr, o, mapFn(@undefined, o));
+                        @putByValDirect(arr, o + 1, mapFn(@undefined, o + 1));
+                        @putByValDirect(arr, o + 2, mapFn(@undefined, o + 2));
+                        @putByValDirect(arr, o + 3, mapFn(@undefined, o + 3));
+                    }
+
+                    for (let o = unrolled; o < len; o++) @putByValDirect(arr, o, mapFn(@undefined, o));
+                }
+            }
 
             else {
-                const unrolled = len & ~3;
+                if (!unrollable) for (let o = 0; o < len; o++) @putByValDirect(arr, o, mapFn(arrayLike[o], o));
 
-                for (let o = 0; o < unrolled; o += 4) {
-                    @putByValDirect(arr, o, mapFn(arrayLike[o], o));
-                    @putByValDirect(arr, o + 1, mapFn(arrayLike[o + 1], o + 1));
-                    @putByValDirect(arr, o + 2, mapFn(arrayLike[o + 2], o + 2));
-                    @putByValDirect(arr, o + 3, mapFn(arrayLike[o + 3], o + 3));
+                else {
+                    const unrolled = len & ~3;
+
+                    for (let o = 0; o < unrolled; o += 4) {
+                        @putByValDirect(arr, o, mapFn(arrayLike[o], o));
+                        @putByValDirect(arr, o + 1, mapFn(arrayLike[o + 1], o + 1));
+                        @putByValDirect(arr, o + 2, mapFn(arrayLike[o + 2], o + 2));
+                        @putByValDirect(arr, o + 3, mapFn(arrayLike[o + 3], o + 3));
+                    }
+
+                    for (let o = unrolled; o < len; o++) @putByValDirect(arr, o, mapFn(arrayLike[o], o));
                 }
-
-                for (let o = unrolled; o < len; o++) @putByValDirect(arr, o, mapFn(arrayLike[o], o));
             }
         }
 
         else {
-            if (!unrollable) for (let o = 0; o < len; o++) @putByValDirect(arr, o, mapFn.@call(thisArg, arrayLike[o], o));
+            if (fast) {
+                if (!unrollable) for (let o = 0; o < len; o++) @putByValDirect(arr, o, mapFn.@call(thisArg, @undefined, o));
+
+                else {
+                    const unrolled = len & ~3;
+
+                    for (let o = 0; o < unrolled; o += 4) {
+                        @putByValDirect(arr, o, mapFn.@call(thisArg, @undefined, o));
+                        @putByValDirect(arr, o + 1, mapFn.@call(thisArg, @undefined, o + 1));
+                        @putByValDirect(arr, o + 2, mapFn.@call(thisArg, @undefined, o + 2));
+                        @putByValDirect(arr, o + 3, mapFn.@call(thisArg, @undefined, o + 3));
+                    }
+
+                    for (let o = unrolled; o < len; o++) @putByValDirect(arr, o, mapFn.@call(thisArg, @undefined, o));
+                }
+            }
 
             else {
-                const unrolled = len & ~3;
+                if (!unrollable) for (let o = 0; o < len; o++) @putByValDirect(arr, o, mapFn.@call(thisArg, arrayLike[o], o));
 
-                for (let o = 0; o < unrolled; o += 4) {
-                    @putByValDirect(arr, o, mapFn.@call(thisArg, arrayLike[o], o));
-                    @putByValDirect(arr, o + 1, mapFn.@call(thisArg, arrayLike[o + 1], o + 1));
-                    @putByValDirect(arr, o + 2, mapFn.@call(thisArg, arrayLike[o + 2], o + 2));
-                    @putByValDirect(arr, o + 3, mapFn.@call(thisArg, arrayLike[o + 3], o + 3));
+                else {
+                    const unrolled = len & ~3;
+
+                    for (let o = 0; o < unrolled; o += 4) {
+                        @putByValDirect(arr, o, mapFn.@call(thisArg, arrayLike[o], o));
+                        @putByValDirect(arr, o + 1, mapFn.@call(thisArg, arrayLike[o + 1], o + 1));
+                        @putByValDirect(arr, o + 2, mapFn.@call(thisArg, arrayLike[o + 2], o + 2));
+                        @putByValDirect(arr, o + 3, mapFn.@call(thisArg, arrayLike[o + 3], o + 3));
+                    }
+
+                    for (let o = unrolled; o < len; o++) @putByValDirect(arr, o, mapFn.@call(thisArg, arrayLike[o], o));
                 }
-
-                for (let o = unrolled; o < len; o++) @putByValDirect(arr, o, mapFn.@call(thisArg, arrayLike[o], o));
             }
         }
     }
@@ -247,6 +321,7 @@ async function defaultAsyncFromAsyncIterator(iterator, mapFn, thisArg)
     }
 
     return (arr.length = offset, arr);
+    // @bun patch
 }
 
 @linkTimeConstant
@@ -262,57 +337,130 @@ async function defaultAsyncFromAsyncArrayLike(asyncItems, mapFn, thisArg)
     const extended = this !== @Array && @isConstructor(this);
     const arr = extended ? new this(len) : @newArrayWithSize(len);
 
+    let fast = true;
     const unrollable = len <= 2 ** 30;
 
-    if (mapFn === @undefined) {
-        if (!unrollable) for (let o = 0; o < len; o++) @putByValDirect(arr, o, await arrayLike[o]);
+    if (@isArray(arrayLike)) fast = false;
+    else if (@isProxyObject(arrayLike)) fast = false;
+    else if (@isTypedArrayView(arrayLike)) fast = false;
+
+    else {
+        // @isNaturalObject would be useful
+        if (@Object.prototype !== @Object.@getPrototypeOf(arrayLike)) fast = false;
 
         else {
-            const unrolled = len & ~3;
+            // needs @objectAllKeysCount(obj)
+            const keys = @Object.@getOwnPropertyNames(arrayLike);
+            if (1 !== keys.length || keys[0] !== 'length') fast = false;
+        }
+    }
 
-            for (let o = 0; o < unrolled; o += 4) {
-                @putByValDirect(arr, o, await arrayLike[o]);
-                @putByValDirect(arr, o + 1, await arrayLike[o + 1]);
-                @putByValDirect(arr, o + 2, await arrayLike[o + 2]);
-                @putByValDirect(arr, o + 3, await arrayLike[o + 3]);
+    if (mapFn === @undefined) {
+        if (fast) {
+            if (!unrollable) for (let o = 0; o < len; o++) @putByValDirect(arr, o, @undefined);
+
+            else {
+                const unrolled = len & ~3;
+
+                for (let o = 0; o < unrolled; o += 4) {
+                    @putByValDirect(arr, o, @undefined);
+                    @putByValDirect(arr, o + 1, @undefined);
+                    @putByValDirect(arr, o + 2, @undefined);
+                    @putByValDirect(arr, o + 3, @undefined);
+                }
+
+                for (let o = unrolled; o < len; o++) @putByValDirect(arr, o, @undefined);
             }
+        }
 
-            for (let o = unrolled; o < len; o++) @putByValDirect(arr, o, await arrayLike[o]);
+        else {
+            if (!unrollable) for (let o = 0; o < len; o++) @putByValDirect(arr, o, await arrayLike[o]);
+
+            else {
+                const unrolled = len & ~3;
+
+                for (let o = 0; o < unrolled; o += 4) {
+                    @putByValDirect(arr, o, await arrayLike[o]);
+                    @putByValDirect(arr, o + 1, await arrayLike[o + 1]);
+                    @putByValDirect(arr, o + 2, await arrayLike[o + 2]);
+                    @putByValDirect(arr, o + 3, await arrayLike[o + 3]);
+                }
+
+                for (let o = unrolled; o < len; o++) @putByValDirect(arr, o, await arrayLike[o]);
+            }
         }
     }
 
     else {
         if (thisArg === @undefined) {
-            if (!unrollable) for (let o = 0; o < len; o++) @putByValDirect(arr, o, await mapFn(await arrayLike[o], o));
+            if (fast) {
+                if (!unrollable) for (let o = 0; o < len; o++) @putByValDirect(arr, o, await mapFn(@undefined, o));
+
+                else {
+                    const unrolled = len & ~3;
+
+                    for (let o = 0; o < unrolled; o += 4) {
+                        @putByValDirect(arr, o, await mapFn(@undefined, o));
+                        @putByValDirect(arr, o + 1, await mapFn(@undefined, o + 1));
+                        @putByValDirect(arr, o + 2, await mapFn(@undefined, o + 2));
+                        @putByValDirect(arr, o + 3, await mapFn(@undefined, o + 3));
+                    }
+
+                    for (let o = unrolled; o < len; o++) @putByValDirect(arr, o, await mapFn(@undefined, o));
+                }
+            }
 
             else {
-                const unrolled = len & ~3;
+                if (!unrollable) for (let o = 0; o < len; o++) @putByValDirect(arr, o, await mapFn(await arrayLike[o], o));
 
-                for (let o = 0; o < unrolled; o += 4) {
-                    @putByValDirect(arr, o, await mapFn(await arrayLike[o], o));
-                    @putByValDirect(arr, o + 1, await mapFn(await arrayLike[o + 1], o + 1));
-                    @putByValDirect(arr, o + 2, await mapFn(await arrayLike[o + 2], o + 2));
-                    @putByValDirect(arr, o + 3, await mapFn(await arrayLike[o + 3], o + 3));
+                else {
+                    const unrolled = len & ~3;
+
+                    for (let o = 0; o < unrolled; o += 4) {
+                        @putByValDirect(arr, o, await mapFn(await arrayLike[o], o));
+                        @putByValDirect(arr, o + 1, await mapFn(await arrayLike[o + 1], o + 1));
+                        @putByValDirect(arr, o + 2, await mapFn(await arrayLike[o + 2], o + 2));
+                        @putByValDirect(arr, o + 3, await mapFn(await arrayLike[o + 3], o + 3));
+                    }
+
+                    for (let o = unrolled; o < len; o++) @putByValDirect(arr, o, await mapFn(await arrayLike[o], o));
                 }
-
-                for (let o = unrolled; o < len; o++) @putByValDirect(arr, o, await mapFn(await arrayLike[o], o));
             }
         }
 
         else {
-            if (!unrollable) for (let o = 0; o < len; o++) @putByValDirect(arr, o, await mapFn.@call(thisArg, await arrayLike[o], o));
-   
-            else {
-                const unrolled = len & ~3;
-   
-                for (let o = 0; o < unrolled; o += 4) {
-                    @putByValDirect(arr, o, await mapFn.@call(thisArg, await arrayLike[o], o));
-                    @putByValDirect(arr, o + 1, await mapFn.@call(thisArg, await arrayLike[o + 1], o + 1));
-                    @putByValDirect(arr, o + 2, await mapFn.@call(thisArg, await arrayLike[o + 2], o + 2));
-                    @putByValDirect(arr, o + 3, await mapFn.@call(thisArg, await arrayLike[o + 3], o + 3));
-                }
+            if (fast) {
+                if (!unrollable) for (let o = 0; o < len; o++) @putByValDirect(arr, o, await mapFn.@call(thisArg, @undefined, o));
 
-                for (let o = unrolled; o < len; o++) @putByValDirect(arr, o, await mapFn.@call(thisArg, await arrayLike[o], o));
+                else {
+                    const unrolled = len & ~3;
+
+                    for (let o = 0; o < unrolled; o += 4) {
+                        @putByValDirect(arr, o, await mapFn.@call(thisArg, @undefined, o));
+                        @putByValDirect(arr, o + 1, await mapFn.@call(thisArg, @undefined, o + 1));
+                        @putByValDirect(arr, o + 2, await mapFn.@call(thisArg, @undefined, o + 2));
+                        @putByValDirect(arr, o + 3, await mapFn.@call(thisArg, @undefined, o + 3));
+                    }
+
+                    for (let o = unrolled; o < len; o++) @putByValDirect(arr, o, await mapFn.@call(thisArg, @undefined, o));
+                }
+            }
+
+            else {
+                if (!unrollable) for (let o = 0; o < len; o++) @putByValDirect(arr, o, await mapFn.@call(thisArg, await arrayLike[o], o));
+
+                else {
+                    const unrolled = len & ~3;
+
+                    for (let o = 0; o < unrolled; o += 4) {
+                        @putByValDirect(arr, o, await mapFn.@call(thisArg, await arrayLike[o], o));
+                        @putByValDirect(arr, o + 1, await mapFn.@call(thisArg, await arrayLike[o + 1], o + 1));
+                        @putByValDirect(arr, o + 2, await mapFn.@call(thisArg, await arrayLike[o + 2], o + 2));
+                        @putByValDirect(arr, o + 3, await mapFn.@call(thisArg, await arrayLike[o + 3], o + 3));
+                    }
+
+                    for (let o = unrolled; o < len; o++) @putByValDirect(arr, o, await mapFn.@call(thisArg, await arrayLike[o], o));
+                }
             }
         }
     }
